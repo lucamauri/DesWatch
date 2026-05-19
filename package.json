@@ -82,7 +82,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
-    "test": "npm run compile && node out/test/runTest.js",
+    "test": "vscode-test",
     "build-icon": "node scripts/build-icon.mjs"
   },
   "dependencies": {
@@ -93,7 +93,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.90.0",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/vsce": "^3.0.0",
     "mocha": "^10.8.2",
     "sharp": "^0.34.5",

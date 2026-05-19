@@ -126,7 +126,21 @@ $RECYCLE.BIN/
 .directory
 
 
+# ── Images ───────────────────────────────────
+# The images/ directory holds the extension icon.
+# Both the SVG source and the 128×128 PNG are committed:
+#   images/icon.svg  — source, edit this
+#   images/icon.png  — exported for the Marketplace (package.json "icon" field)
+#
+# Any other generated/resized variants are ignored.
+images/*.png
+!images/icon.png
+
+
 # ── Miscellaneous ─────────────────────────────
 # OS-agnostic editor backup files.
 *.bak
 *.orig
+
+# Temporary files written by Claude Code's Edit tool on Windows.
+*.ts.tmp.*

@@ -17,8 +17,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Cache the VS Code binary downloaded by @vscode/test-electron so
-      # subsequent runs do not re-download ~200 MB on every CI invocation.
       - uses: actions/cache@v4
         with:
           path: .vscode-test
@@ -28,12 +26,5 @@ jobs:
 
       - run: npm run compile
 
-      # Xvfb is required on headless Linux because @vscode/test-electron
-      # launches a full VS Code instance which needs a display server.
-      - name: Start Xvfb
-        run: Xvfb :99 -screen 0 1024x768x24 &
-
       - name: Run tests
         run: npm test
-        env:
-          DISPLAY: ':99.0'
