@@ -17,8 +17,8 @@
  * thrashing during active editing.
  */
 import * as vscode from 'vscode';
-import { SPEC } from './spec.js';
-import { extractFrontMatter } from './parser.js';
+import { SPEC, getExpectedType } from './spec.js';
+import { extractFrontMatter, FrontMatterExcerpt } from './parser.js';
 import { getCachedResult, invalidate } from './tokenCache.js';
 import { log } from './log.js';
 
@@ -210,7 +210,73 @@ function runPassA(doc: vscode.TextDocument): vscode.Diagnostic[] {
         }
     }
 
+    // ── Type-mismatch sub-pass ──────────────────────────────────────────────
+    // For each token in the map, check that its value matches the expected type
+    // from TOKEN_SCHEMA. Values starting with '#' are already handled by the hex
+    // validity scan above, and token references like "{colors.primary}" are
+    // intentional cross-references — both are skipped here.
+    for (const [tokenPath, value] of Object.entries(result.tokens)) {
+        const expectedType = getExpectedType(tokenPath);
+        if (expectedType === 'string') {
+            continue;
+        }
+
+        if (expectedType === 'hex' && !value.startsWith('#') && !value.startsWith('{')) {
+            const lineIdx = findYamlKeyLine(doc, excerpt, tokenPath.split('.').pop()!);
+            if (lineIdx !== -1) {
+                diagnostics.push(
+                    new vscode.Diagnostic(
+                        doc.lineAt(lineIdx).range,
+                        `Token "${tokenPath}" expects a hex color (#RGB, #RRGGBB, or #RRGGBBAA). Got: "${value}".`,
+                        vscode.DiagnosticSeverity.Error
+                    )
+                );
+            }
+        }
+
+        if (expectedType === 'number' && !value.startsWith('{')) {
+            if (!/^\d+(\.\d+)?(px|rem|em|%|vh|vw|vmin|vmax|ch|ex)?$/i.test(value)) {
+                const lineIdx = findYamlKeyLine(doc, excerpt, tokenPath.split('.').pop()!);
+                if (lineIdx !== -1) {
+                    diagnostics.push(
+                        new vscode.Diagnostic(
+                            doc.lineAt(lineIdx).range,
+                            `Token "${tokenPath}" expects a numeric value (e.g. "8", "16px", "1.5rem"). Got: "${value}".`,
+                            vscode.DiagnosticSeverity.Warning
+                        )
+                    );
+                }
+            }
+        }
+    }
+
     return diagnostics;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Scans the YAML front matter lines for the first line whose key matches
+ * `leafKey`. Returns the zero-based document line index, or -1 if not found.
+ * This is an approximation: when two token paths share the same leaf name the
+ * first match in document order is returned.
+ */
+function findYamlKeyLine(
+    doc: vscode.TextDocument,
+    excerpt: FrontMatterExcerpt,
+    leafKey: string
+): number {
+    const pattern = new RegExp('^\\s*' + escapeRegExp(leafKey) + '\\s*:');
+    for (let i = excerpt.fmStartLine + 1; i < excerpt.fmEndLine; i++) {
+        if (pattern.test(doc.lineAt(i).text)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ─── Pass B: section order ────────────────────────────────────────────────────
