@@ -26,8 +26,8 @@
  * word character).
  */
 import * as vscode from 'vscode';
-import { SPEC } from './spec.js';
-import { getExcerpt } from './parser.js';
+import { SPEC, getExpectedType } from './spec.js';
+import { getExcerpt, FrontMatterExcerpt } from './parser.js';
 import { log } from './log.js';
 
 // ─── Palette colours offered in Region B ────────────────────────────────────
@@ -72,6 +72,48 @@ const KEY_DOCS: Readonly<Record<string, string>> = {
     components:
         'Component-level design token overrides and composition rules. ' +
         'Each component entry maps directly to a design-system component name.',
+};
+
+// ─── Sub-key completions for nested positions ────────────────────────────────
+
+type SubKeyEntry = { key: string; detail: string; snippet: string };
+
+/**
+ * Known sub-keys for each top-level front matter key.
+ * Offered when the cursor is indented inside a top-level block.
+ */
+const SUB_KEYS: Readonly<Record<string, SubKeyEntry[]>> = {
+    typography: [
+        { key: 'family',     detail: 'Font family name',         snippet: 'family: "$1"'     },
+        { key: 'size',       detail: 'Font size (e.g. 16px)',     snippet: 'size: "$1"'       },
+        { key: 'weight',     detail: 'Font weight (e.g. 400)',    snippet: 'weight: "$1"'     },
+        { key: 'lineHeight', detail: 'Line height (e.g. 1.5)',    snippet: 'lineHeight: "$1"' },
+    ],
+    components: [
+        { key: 'background', detail: 'Background color token', snippet: 'background: "{colors.$1}"' },
+        { key: 'text',       detail: 'Text color token',       snippet: 'text: "{colors.$1}"'       },
+        { key: 'border',     detail: 'Border token',           snippet: 'border: "$1"'              },
+        { key: 'radius',     detail: 'Border radius token',    snippet: 'radius: "{shapes.$1}"'     },
+        { key: 'padding',    detail: 'Padding token',          snippet: 'padding: "{spacing.$1}"'   },
+    ],
+    elevation: [
+        { key: 'shadow', detail: 'Box shadow value',  snippet: 'shadow: "$1"' },
+        { key: 'blur',   detail: 'Blur radius',       snippet: 'blur: "$1"'   },
+        { key: 'spread', detail: 'Spread radius',     snippet: 'spread: "$1"' },
+        { key: 'color',  detail: 'Shadow color',      snippet: 'color: "$1"'  },
+    ],
+    shapes: [
+        { key: 'small',  detail: 'Small border radius (chips)',   snippet: 'small: "${1:4px}"'    },
+        { key: 'medium', detail: 'Medium border radius (cards)',  snippet: 'medium: "${1:8px}"'   },
+        { key: 'large',  detail: 'Large border radius (dialogs)', snippet: 'large: "${1:16px}"'   },
+        { key: 'full',   detail: 'Full/pill border radius',       snippet: 'full: "9999px"'       },
+    ],
+};
+
+/** Inline entry templates for `colors` and `spacing` (no fixed sub-key names). */
+const INLINE_ENTRY_TEMPLATES: Readonly<Record<string, { label: string; snippet: string }>> = {
+    colors:  { label: 'new color token',   snippet: '${1:token-name}: "${2:#4285F4}"' },
+    spacing: { label: 'new spacing token', snippet: '${1:token-name}: "${2:8px}"'     },
 };
 
 // ─── Registration ─────────────────────────────────────────────────────────────
@@ -147,21 +189,25 @@ function computeCompletions(
     }
 
     // ── Region B: hex value completions (front matter, value position) ──────
-    // The line must contain a `:` and the partial value after the last `:`
-    // (trimmed, with any opening quote stripped) must start with `#`.
+    // The line must contain `:` and the partial value must start with `#`.
+    // Suppressed when the token's expected type (from TOKEN_SCHEMA) is not hex.
     if (isHexValuePosition(lineText, position)) {
+        const tokenPath = getContextualTokenPath(document, position, excerpt);
+        if (tokenPath !== null && getExpectedType(tokenPath) !== 'hex') {
+            return [];
+        }
         return regionB_hexValues();
     }
 
-    // ── Region A: top-level key completions (front matter, indent level 0) ──
-    // Only offer keys when the cursor is at the start of a line with no
-    // leading whitespace — nested keys belong to a different (future) provider.
+    // ── Region A: key completions (front matter) ────────────────────────────
     const leadingSpaces = lineText.match(/^(\s*)/)?.[1] ?? '';
     if (leadingSpaces.length === 0) {
+        // Indent 0 → offer top-level canonical keys.
         return regionA_frontMatterKeys(lineText);
     }
 
-    return [];
+    // Indented → offer sub-key completions based on the top-level ancestor.
+    return regionA_subKeys(document, position, excerpt);
 }
 
 // ─── Region A ─────────────────────────────────────────────────────────────────
@@ -242,6 +288,100 @@ function regionB_hexValues(): vscode.CompletionItem[] {
         item.filterText = hex;
         return item;
     });
+}
+
+// ─── Region A — nested sub-key completions ────────────────────────────────────
+
+/**
+ * Scans upward from `position` to find the nearest indent-0 key in the front
+ * matter, which is the top-level ancestor for the current indented position.
+ * Returns the key string (e.g. `"typography"`) or `null` if not found.
+ */
+function getTopLevelParentKey(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    fmStartLine: number
+): string | null {
+    for (let i = position.line - 1; i > fmStartLine; i--) {
+        const text = document.lineAt(i).text;
+        const m = /^(\w[\w-]*)\s*:/.exec(text);
+        if (m) {
+            return m[1];
+        }
+    }
+    return null;
+}
+
+/**
+ * Builds an approximate dot-path for the token under the cursor by combining
+ * the top-level ancestor key with the leaf key on the current line.
+ * Used to look up the expected type in TOKEN_SCHEMA for Region B suppression.
+ * Returns `null` when the path cannot be determined.
+ */
+function getContextualTokenPath(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    excerpt: FrontMatterExcerpt | null
+): string | null {
+    if (!excerpt) {
+        return null;
+    }
+    const lineText = document.lineAt(position.line).text;
+    const keyMatch = /^\s*([\w-]+)\s*:/.exec(lineText);
+    if (!keyMatch) {
+        return null;
+    }
+    const topKey = getTopLevelParentKey(document, position, excerpt.fmStartLine);
+    if (!topKey) {
+        return null;
+    }
+    return `${topKey}.${keyMatch[1]}`;
+}
+
+/**
+ * Returns completion items for nested positions inside a top-level key block.
+ * Uses `SUB_KEYS` for keys with fixed sub-key schemas and `INLINE_ENTRY_TEMPLATES`
+ * for keys with dynamic names (`colors`, `spacing`).
+ */
+function regionA_subKeys(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    excerpt: FrontMatterExcerpt | null
+): vscode.CompletionItem[] {
+    if (!excerpt) {
+        return [];
+    }
+    const topKey = getTopLevelParentKey(document, position, excerpt.fmStartLine);
+    if (!topKey) {
+        return [];
+    }
+
+    const lineText = document.lineAt(position.line).text;
+
+    const subKeys = SUB_KEYS[topKey];
+    if (subKeys) {
+        for (const { key } of subKeys) {
+            if (lineText.includes(`${key}:`)) {
+                return []; // already on an existing entry
+            }
+        }
+        return subKeys.map(({ key, detail, snippet }) => {
+            const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Property);
+            item.detail = detail;
+            item.insertText = new vscode.SnippetString(snippet);
+            return item;
+        });
+    }
+
+    const template = INLINE_ENTRY_TEMPLATES[topKey];
+    if (template) {
+        const item = new vscode.CompletionItem(template.label, vscode.CompletionItemKind.Property);
+        item.detail = `New ${topKey} token`;
+        item.insertText = new vscode.SnippetString(template.snippet);
+        return [item];
+    }
+
+    return [];
 }
 
 // ─── Region C ─────────────────────────────────────────────────────────────────
