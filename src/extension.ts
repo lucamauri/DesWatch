@@ -5,6 +5,7 @@ import { registerDefinitionProvider } from './definitionProvider.js';
 import { registerDiagnostics } from './diagnostics.js';
 import { registerHoverProvider } from './hoverProvider.js';
 import { disposeLog } from './log.js';
+import { registerPreviewPanel } from './previewPanel.js';
 import { clearCache } from './tokenCache.js';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -19,6 +20,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerHoverProvider(context);
     registerCompletionProvider(context);
     registerDefinitionProvider(context);
+    registerPreviewPanel(context);
 }
 
 export function deactivate(): void {

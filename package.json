@@ -56,6 +56,24 @@
         "path": "./snippets/design-md.json"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deswatch",
+          "title": "DesWatch",
+          "icon": "images/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "deswatch": [
+        {
+          "id": "deswatch.preview",
+          "name": "Design Preview",
+          "type": "webview"
+        }
+      ]
+    },
     "configuration": {
       "title": "DesWatch",
       "properties": {
