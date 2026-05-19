@@ -1,0 +1,132 @@
+# ─────────────────────────────────────────────
+#  DesWatch — .gitignore
+#  Covers: Node/TypeScript, VS Code extension
+#  toolchain, VS Code editor, Claude Code,
+#  Windows, and Ubuntu (Linux).
+# ─────────────────────────────────────────────
+
+
+# ── Node / npm ────────────────────────────────
+# All third-party packages installed by npm.
+# Never commit these; restore with `npm install`.
+node_modules/
+
+# npm debug logs written on failed installs.
+npm-debug.log*
+
+# Lockfile variants from other package managers.
+# Commit package-lock.json; ignore yarn/pnpm locks
+# so contributors aren't forced into a specific manager.
+yarn.lock
+pnpm-lock.yaml
+
+# Optional npm cache directory if someone runs
+# `npm install --cache .npm` inside the repo.
+.npm/
+
+
+# ── TypeScript build output ───────────────────
+# The `out/` directory is produced by `tsc` as
+# configured in tsconfig.json ("outDir": "out").
+# It is regenerated on every compile run and must
+# not be tracked — only source lives in the repo.
+out/
+
+# TypeScript incremental build cache.
+# Speeds up subsequent compiles but is machine-specific.
+*.tsbuildinfo
+
+
+# ── VS Code extension packaging ───────────────
+# .vsix files are the distributable bundles produced
+# by `vsce package`. They are binary archives and
+# should be attached to GitHub Releases, not committed.
+*.vsix
+
+
+# ── VS Code editor ────────────────────────────
+# The .vscode/ folder holds workspace-level editor
+# settings and launch configs.
+#
+# IMPORTANT: two files in this folder ARE intentionally
+# committed for a consistent developer experience:
+#   .vscode/launch.json   — F5 debug config for the extension host
+#   .vscode/tasks.json    — build task wiring (npm run compile)
+#
+# Everything else (personal UI state, extension
+# recommendations specific to one developer) is ignored.
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# VS Code workspace file if one is ever created.
+*.code-workspace
+
+
+# ── Claude Code ───────────────────────────────
+# Claude Code stores its project memory and session
+# state in a hidden directory at the repo root.
+# This is machine- and session-specific; never commit it.
+.claude/
+
+# HANDOFF.md at the repo root is the live working file
+# produced by the current Claude Code session. It is
+# ignored while in progress (transient, not yet reviewed).
+#
+# Convention: after each session, move and rename it into
+# the handoffs/ directory before committing, e.g.:
+#   handoffs/2026-05-19-phase-1.md
+#
+# The handoffs/ directory is NOT ignored — its contents
+# form a permanent, human-readable project diary.
+/HANDOFF.md
+
+
+# ── Environment / secrets ─────────────────────
+# .env files may contain API keys or publisher tokens.
+# Never commit secrets.
+.env
+.env.*
+!.env.example
+
+
+# ── Windows ───────────────────────────────────
+# Thumbnail cache files created by Windows Explorer.
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Windows shell metadata stored in every folder.
+desktop.ini
+
+# Shortcut files Windows sometimes drops into project dirs.
+*.lnk
+
+# Windows volume information (appears on root of drives).
+$RECYCLE.BIN/
+
+
+# ── Ubuntu / Linux ────────────────────────────
+# macOS resource forks (in case a Mac joins the team).
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Vim swap / undo files (common on Linux dev machines).
+*.swp
+*.swo
+*~
+
+# Linux trash folders.
+.Trash-*/
+
+# KDE / Dolphin folder metadata.
+.directory
+
+
+# ── Miscellaneous ─────────────────────────────
+# OS-agnostic editor backup files.
+*.bak
+*.orig

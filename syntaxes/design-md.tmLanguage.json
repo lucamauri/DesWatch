@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Design Markdown",
+  "scopeName": "source.design-md",
+  "fileTypes": [],
+  "patterns": [
+    { "include": "#front-matter" },
+    { "include": "text.html.markdown" }
+  ],
+  "repository": {
+    "front-matter": {
+      "begin": "\\A(---+)\\s*$",
+      "end": "^(---+)\\s*$",
+      "name": "meta.front-matter.design-md",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.front-matter.begin.design-md"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.front-matter.end.design-md"
+        }
+      },
+      "contentName": "meta.embedded.block.yaml",
+      "patterns": [
+        { "include": "source.yaml" }
+      ]
+    }
+  }
+}

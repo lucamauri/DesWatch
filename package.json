@@ -1,0 +1,96 @@
+{
+  "name": "deswatch",
+  "displayName": "DesWatch",
+  "description": "Rich editing support for DESIGN.md files (Google design.md format)",
+  "version": "0.1.0",
+  "publisher": "lucamauri",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Languages"
+  ],
+  "keywords": [
+    "design system",
+    "design tokens",
+    "DESIGN.md",
+    "design.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucamauri/DesWatch"
+  },
+  "activationEvents": [
+    "onLanguage:design-md"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "design-md",
+        "aliases": [
+          "Design Markdown",
+          "design-md"
+        ],
+        "filenames": [
+          "DESIGN.md",
+          "design.md"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "design-md",
+        "scopeName": "source.design-md",
+        "path": "./syntaxes/design-md.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.yaml": "yaml"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "DesWatch",
+      "properties": {
+        "deswatch.sectionValidation": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "off"
+          ],
+          "default": "warning",
+          "markdownDescription": "Severity of diagnostics for missing or out-of-order Markdown sections in DESIGN.md files. Token-level errors (malformed hex values, wrong types) are always reported as errors regardless of this setting."
+        },
+        "deswatch.draftThreshold": {
+          "type": "number",
+          "default": 3,
+          "markdownDescription": "Minimum number of `##` sections before DesWatch reports missing canonical sections. Files with fewer sections are treated as drafts and the missing-section Hints are suppressed."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "test": "npm run compile && node out/test/runTest.js",
+    "build-icon": "node scripts/build-icon.mjs"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.0.0",
+    "mocha": "^10.8.2",
+    "sharp": "^0.34.5",
+    "typescript": "^5.4.0"
+  }
+}

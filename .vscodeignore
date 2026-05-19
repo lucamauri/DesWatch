@@ -1,0 +1,22 @@
+# ── Tooling & editor ───────────────────────────────────────────────
+.vscode/**
+.vscode-test/**
+.claude/**
+node_modules/**
+scripts/**
+handoffs/**
+.gitignore
+tsconfig.json
+HANDOFF.md
+
+# ── TypeScript source (already compiled to out/) ───────────────────
+src/**
+
+# ── Test output (not part of the extension runtime) ───────────────
+out/test/**
+
+# ── Source maps ────────────────────────────────────────────────────
+out/**/*.map
+
+# ── Image source (only the rasterised PNG ships) ──────────────────
+images/icon.svg
