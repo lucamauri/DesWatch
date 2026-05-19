@@ -50,6 +50,12 @@
         }
       }
     ],
+    "snippets": [
+      {
+        "language": "design-md",
+        "path": "./snippets/design-md.json"
+      }
+    ],
     "configuration": {
       "title": "DesWatch",
       "properties": {
