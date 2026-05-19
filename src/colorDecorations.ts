@@ -36,13 +36,21 @@ export class DesignMdColorProvider implements vscode.DocumentColorProvider {
         _token: vscode.CancellationToken
     ): vscode.ColorInformation[] {
         const fmEnd = frontMatterEndLine(document);
-        if (fmEnd === -1) {
-            return [];
+
+        // Fence lines (opening `---` at 0 and closing `---` at fmEnd) never
+        // contain hex values — skip them. Scan all other lines: front matter
+        // content (1…fmEnd-1) and the full Markdown body (fmEnd+1…end).
+        const fenceLines = new Set<number>([0]);
+        if (fmEnd !== -1) {
+            fenceLines.add(fmEnd);
         }
 
         const colors: vscode.ColorInformation[] = [];
 
-        for (let lineIdx = 1; lineIdx < fmEnd; lineIdx++) {
+        for (let lineIdx = 0; lineIdx < document.lineCount; lineIdx++) {
+            if (fenceLines.has(lineIdx)) {
+                continue;
+            }
             const lineText = document.lineAt(lineIdx).text;
             HEX_COLOR_RE.lastIndex = 0;
             let match: RegExpExecArray | null;
