@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DesignMdColorProvider } from './colorDecorations.js';
+import { registerCompletionProvider } from './completionProvider.js';
 import { registerDiagnostics } from './diagnostics.js';
 import { registerHoverProvider } from './hoverProvider.js';
 import { disposeLog } from './log.js';
@@ -15,6 +16,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     registerDiagnostics(context);
     registerHoverProvider(context);
+    registerCompletionProvider(context);
 }
 
 export function deactivate(): void {
