@@ -47,18 +47,20 @@ export function registerDefinitionProvider(context: vscode.ExtensionContext): vo
 // ─── Provider implementation ──────────────────────────────────────────────────
 
 /**
- * Returns the location of the token definition in the YAML front matter, or
- * `undefined` if no definition can be found.
+ * Returns all locations where the hovered token is defined in the YAML front
+ * matter, or `undefined` if no definition can be found.
  *
- * Only activates when the cursor is in the Markdown body — navigating from
- * the front matter to itself is not useful and is left to VS Code's built-in
- * YAML provider.
+ * Returning a `Location[]` lets VS Code surface a "peek references" picker when
+ * multiple token paths share the same leaf name (e.g. `colors.primary` and
+ * `dark.colors.primary` both define `primary`).
+ *
+ * Only activates when the cursor is in the Markdown body.
  */
 function provideDefinition(
     document: vscode.TextDocument,
     position: vscode.Position,
     _token: vscode.CancellationToken
-): vscode.Location | undefined {
+): vscode.Location[] | undefined {
     try {
         return computeDefinition(document, position);
     } catch (err) {
@@ -70,15 +72,13 @@ function provideDefinition(
 function computeDefinition(
     document: vscode.TextDocument,
     position: vscode.Position
-): vscode.Location | undefined {
+): vscode.Location[] | undefined {
     const excerpt = getExcerpt(document);
     if (!excerpt) {
         return undefined;
     }
 
-    // Only resolve definitions from within the Markdown body. The front matter
-    // itself is where definitions live, so "go to definition" from there would
-    // just navigate to the same spot — unhelpful and potentially confusing.
+    // Only resolve definitions from within the Markdown body.
     const inBody = position.line > excerpt.fmEndLine;
     if (!inBody) {
         return undefined;
@@ -91,8 +91,6 @@ function computeDefinition(
     const tokens = result.tokens;
 
     // ── Word extraction ──────────────────────────────────────────────────────
-    // Try a dot-extended word range first so `colors.primary` is tried as a
-    // full path before falling back to just `primary`.
     const dotWordRange = document.getWordRangeAtPosition(position, /[\w.]+/);
     const plainWordRange = document.getWordRangeAtPosition(position);
 
@@ -108,88 +106,98 @@ function computeDefinition(
     }
 
     // ── Token lookup ─────────────────────────────────────────────────────────
+    // Collect all matching locations and deduplicate by document line number so
+    // that a leaf name that appears on the same YAML line via multiple paths is
+    // only shown once in the peek picker.
+    const seenLines = new Set<number>();
+    const locations: vscode.Location[] = [];
+
+    const addLocations = (paths: string[]) => {
+        for (const path of paths) {
+            const locs = findDefinitionLocations(document, excerpt, path);
+            for (const loc of locs) {
+                const line = loc.range.start.line;
+                if (!seenLines.has(line)) {
+                    seenLines.add(line);
+                    locations.push(loc);
+                }
+            }
+        }
+    };
+
     for (const word of candidates) {
         // Pass 1: exact full-path match.
         if (tokens[word] !== undefined) {
-            const loc = findDefinitionLocation(document, excerpt, word);
-            if (loc) { return loc; }
+            addLocations([word]);
+            if (locations.length > 0) {
+                return locations;
+            }
         }
 
-        // Pass 2: leaf-name match — find all token paths whose last segment
-        // equals `word` and return the first match.
-        const matches = Object.keys(tokens).filter(path => {
-            const segments = path.split('.');
-            return segments[segments.length - 1] === word;
+        // Pass 2: leaf-name match — collect all paths whose last segment equals `word`.
+        const leafMatches = Object.keys(tokens).filter(path => {
+            const segs = path.split('.');
+            return segs[segs.length - 1] === word;
         });
-        if (matches.length > 0) {
-            const loc = findDefinitionLocation(document, excerpt, matches[0]);
-            if (loc) { return loc; }
+        if (leafMatches.length > 0) {
+            addLocations(leafMatches);
+            if (locations.length > 0) {
+                return locations;
+            }
         }
     }
 
-    return undefined;
+    return locations.length > 0 ? locations : undefined;
 }
 
 // ─── Definition location resolver ────────────────────────────────────────────
 
 /**
- * Scans the YAML front matter text line by line to find where `tokenPath` is
- * defined, then returns a `Location` pointing to that line in the document.
+ * Scans the YAML front matter line by line and returns all `Location` objects
+ * where the leaf key of `tokenPath` appears as a YAML mapping key.
  *
- * The scan uses the leaf key (last segment of `tokenPath`) and matches any
- * line of the form `<optional-indent><leafKey><optional-spaces>:`.  This
- * covers both top-level keys (`colors:`) and nested keys (`  primary:`).
- *
- * ── Line-offset calculation ──────────────────────────────────────────────────
- * `excerpt.fmStartLine` is the document line of the opening `---` fence (0).
- * The first YAML content line is therefore `fmStartLine + 1`.
- * A match at `yamlLineIdx` (zero-based within `excerpt.yaml.split('\n')`)
- * maps to document line `fmStartLine + 1 + yamlLineIdx`.
+ * Returning all matches (not just the first) allows the caller to surface a
+ * peek picker when multiple token paths share the same leaf name.
  *
  * @param document  The active document.
  * @param excerpt   Front matter metadata from `getExcerpt()`.
  * @param tokenPath The full dot-separated token path to locate.
- * @returns A `vscode.Location` for the definition line, or `undefined`.
+ * @returns An array of `Location` objects (may be empty).
  */
-function findDefinitionLocation(
+function findDefinitionLocations(
     document: vscode.TextDocument,
     excerpt: NonNullable<ReturnType<typeof getExcerpt>>,
     tokenPath: string
-): vscode.Location | undefined {
-    // The leaf key is the last segment: `colors.primary` → `primary`.
+): vscode.Location[] {
     const leafKey = tokenPath.split('.').pop();
     if (!leafKey) {
-        return undefined;
+        return [];
     }
 
-    // Build a pattern that matches `leafKey` as a YAML mapping key.
-    // We use `\b` to avoid matching `primaryDark` when looking for `primary`.
     const keyPattern = new RegExp(`^(\\s*)${escapeRegExp(leafKey)}\\s*:`);
-
+    const locations: vscode.Location[] = [];
     const yamlLines = excerpt.yaml.split('\n');
+
     for (let yamlLineIdx = 0; yamlLineIdx < yamlLines.length; yamlLineIdx++) {
         const match = keyPattern.exec(yamlLines[yamlLineIdx]);
         if (!match) {
             continue;
         }
-
-        // Convert YAML-relative index to document-absolute line number.
-        // fmStartLine + 1 skips the opening `---` fence line.
         const docLine = excerpt.fmStartLine + 1 + yamlLineIdx;
-
-        // Build a range spanning only the key name within that line, not the
-        // whole line. This gives users a precise navigation target.
-        const keyStart = match[1].length;                  // length of leading whitespace
+        const keyStart = match[1].length;
         const keyEnd = keyStart + leafKey.length;
-        const range = new vscode.Range(
-            new vscode.Position(docLine, keyStart),
-            new vscode.Position(docLine, keyEnd)
+        locations.push(
+            new vscode.Location(
+                document.uri,
+                new vscode.Range(
+                    new vscode.Position(docLine, keyStart),
+                    new vscode.Position(docLine, keyEnd)
+                )
+            )
         );
-
-        return new vscode.Location(document.uri, range);
     }
 
-    return undefined;
+    return locations;
 }
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
