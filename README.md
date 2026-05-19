@@ -1,5 +1,7 @@
 # DesWatch
 
+![CI](https://github.com/lucamauri/DesWatch/actions/workflows/ci.yml/badge.svg)
+
 VS Code extension for [DESIGN.md](https://github.com/google-labs-code/design.md) files — Google's open format for describing visual design systems to AI coding agents.
 
 ## Features
