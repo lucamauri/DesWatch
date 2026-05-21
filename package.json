@@ -2,7 +2,7 @@
   "name": "deswatch",
   "displayName": "DesWatch",
   "description": "Rich editing support for DESIGN.md files (Google design.md format)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "lucamauri",
   "icon": "images/icon.png",
   "engines": {
