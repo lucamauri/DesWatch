@@ -26,6 +26,12 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "deswatch.exportCssVariables",
+        "title": "DesWatch: Export CSS Custom Properties"
+      }
+    ],
     "languages": [
       {
         "id": "design-md",

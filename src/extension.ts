@@ -3,6 +3,7 @@ import { DesignMdColorProvider } from './colorDecorations.js';
 import { registerCompletionProvider } from './completionProvider.js';
 import { registerDefinitionProvider } from './definitionProvider.js';
 import { registerDiagnostics } from './diagnostics.js';
+import { registerCssExportCommand } from './exporters/cssExporter.js';
 import { registerHoverProvider } from './hoverProvider.js';
 import { disposeLog } from './log.js';
 import { registerPreviewPanel } from './previewPanel.js';
@@ -17,6 +18,7 @@ export function activate(context: vscode.ExtensionContext): void {
     );
 
     registerDiagnostics(context);
+    registerCssExportCommand(context);
     registerHoverProvider(context);
     registerCompletionProvider(context);
     registerDefinitionProvider(context);
