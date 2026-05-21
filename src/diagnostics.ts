@@ -18,7 +18,7 @@
  */
 import * as vscode from 'vscode';
 import { SPEC, getExpectedType } from './spec.js';
-import { extractFrontMatter, FrontMatterExcerpt } from './parser.js';
+import { extractFrontMatter, FrontMatterExcerpt, TokenMap } from './parser.js';
 import { getCachedResult, invalidate } from './tokenCache.js';
 import { log } from './log.js';
 
@@ -33,6 +33,91 @@ import { log } from './log.js';
  */
 const INTENDED_HEX_RE = /#(\w+)/g;
 const VALID_HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+// 'number' accepts only unitless numeric values (e.g. "8", "1.5").
+// Separate from DIMENSION_RE because some tokens (font-weight, z-index, unitless
+// multipliers) must never carry a CSS unit — an accidental unit would be a bug.
+const NUMBER_RE = /^\d+(\.\d+)?$/;
+
+// 'dimension' accepts a number followed by an optional CSS unit (e.g. "8px", "0.5rem", "50%").
+// Separate from NUMBER_RE because spacing and sizing tokens are expected to carry units —
+// a unitless value is likely an incomplete entry rather than a valid token.
+const DIMENSION_RE = /^\d+(\.\d+)?(px|rem|em|%|vh|vw|pt)?$/;
+
+// ─── Exported type-mismatch validator ─────────────────────────────────────────
+
+/** A single type-mismatch violation produced by `findTypeMismatches`. */
+export interface TypeMismatch {
+    /** Dot-separated token path (e.g. `"colors.primary"`). */
+    path: string;
+    /** Human-readable description of the mismatch. */
+    message: string;
+    /** `true` → `Error` severity; `false` → `Warning` severity. */
+    isError: boolean;
+}
+
+/**
+ * Validates the token types in a `TokenMap` against `TOKEN_SCHEMA` and returns
+ * any mismatches.
+ *
+ * This is a pure function with no VS Code API dependency — it can be called
+ * directly in unit tests by passing the result of `parseFrontMatter`.
+ *
+ * Token references starting with `{` (e.g. `{colors.primary}`) are always
+ * skipped because they are intentional cross-references, not literal values.
+ * Values starting with `#` are validated by the hex-scan pass in `runPassA`,
+ * not here.
+ *
+ * @param tokens A flat token map produced by `parseFrontMatter`.
+ */
+export function findTypeMismatches(tokens: TokenMap): TypeMismatch[] {
+    const mismatches: TypeMismatch[] = [];
+
+    for (const [tokenPath, value] of Object.entries(tokens)) {
+        const expectedType = getExpectedType(tokenPath);
+        if (expectedType === 'string') {
+            continue;
+        }
+        // Token cross-references are valid in any position — skip them.
+        if (value.startsWith('{')) {
+            continue;
+        }
+
+        if (expectedType === 'hex') {
+            // Hex format validity (e.g. #GGG) is checked by the hex-scan pass.
+            // Here we only flag values that don't start with '#' at all — those
+            // are clearly wrong type, not just malformed hex.
+            if (!value.startsWith('#')) {
+                mismatches.push({
+                    path: tokenPath,
+                    message: `Token "${tokenPath}" expects a hex colour (#RGB, #RRGGBB, or #RRGGBBAA). Got: "${value}".`,
+                    isError: true,
+                });
+            }
+        } else if (expectedType === 'dimension') {
+            // Number mismatches for dimension tokens are Warnings, not Errors —
+            // the value may be intentionally unitless (e.g. "0") or the author
+            // may be mid-edit. Errors are reserved for clearly wrong types.
+            if (!DIMENSION_RE.test(value)) {
+                mismatches.push({
+                    path: tokenPath,
+                    message: `Token "${tokenPath}" expects a dimension value (e.g. "8px", "1.5rem", "50%"). Got: "${value}".`,
+                    isError: false,
+                });
+            }
+        } else if (expectedType === 'number') {
+            if (!NUMBER_RE.test(value)) {
+                mismatches.push({
+                    path: tokenPath,
+                    message: `Token "${tokenPath}" expects a unitless numeric value (e.g. "8", "1.5"). Got: "${value}".`,
+                    isError: false,
+                });
+            }
+        }
+    }
+
+    return mismatches;
+}
 
 /** Matches `## Heading` lines in the Markdown body. Group 1 = heading text. */
 const H2_RE = /^##\s+(.+)$/;
@@ -211,42 +296,20 @@ function runPassA(doc: vscode.TextDocument): vscode.Diagnostic[] {
     }
 
     // ── Type-mismatch sub-pass ──────────────────────────────────────────────
-    // For each token in the map, check that its value matches the expected type
-    // from TOKEN_SCHEMA. Values starting with '#' are already handled by the hex
-    // validity scan above, and token references like "{colors.primary}" are
-    // intentional cross-references — both are skipped here.
-    for (const [tokenPath, value] of Object.entries(result.tokens)) {
-        const expectedType = getExpectedType(tokenPath);
-        if (expectedType === 'string') {
-            continue;
-        }
-
-        if (expectedType === 'hex' && !value.startsWith('#') && !value.startsWith('{')) {
-            const lineIdx = findYamlKeyLine(doc, excerpt, tokenPath.split('.').pop()!);
-            if (lineIdx !== -1) {
-                diagnostics.push(
-                    new vscode.Diagnostic(
-                        doc.lineAt(lineIdx).range,
-                        `Token "${tokenPath}" expects a hex color (#RGB, #RRGGBB, or #RRGGBBAA). Got: "${value}".`,
-                        vscode.DiagnosticSeverity.Error
-                    )
-                );
-            }
-        }
-
-        if (expectedType === 'number' && !value.startsWith('{')) {
-            if (!/^\d+(\.\d+)?(px|rem|em|%|vh|vw|vmin|vmax|ch|ex)?$/i.test(value)) {
-                const lineIdx = findYamlKeyLine(doc, excerpt, tokenPath.split('.').pop()!);
-                if (lineIdx !== -1) {
-                    diagnostics.push(
-                        new vscode.Diagnostic(
-                            doc.lineAt(lineIdx).range,
-                            `Token "${tokenPath}" expects a numeric value (e.g. "8", "16px", "1.5rem"). Got: "${value}".`,
-                            vscode.DiagnosticSeverity.Warning
-                        )
-                    );
-                }
-            }
+    // Delegate to `findTypeMismatches` (pure, exported) and then attach document
+    // positions by scanning the YAML front matter for each offending key.
+    for (const mismatch of findTypeMismatches(result.tokens)) {
+        const lineIdx = findYamlKeyLine(doc, excerpt, mismatch.path.split('.').pop()!);
+        if (lineIdx !== -1) {
+            diagnostics.push(
+                new vscode.Diagnostic(
+                    doc.lineAt(lineIdx).range,
+                    mismatch.message,
+                    mismatch.isError
+                        ? vscode.DiagnosticSeverity.Error
+                        : vscode.DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 
