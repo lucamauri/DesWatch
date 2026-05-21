@@ -60,6 +60,19 @@ class DesWatchPreviewProvider implements vscode.WebviewViewProvider {
         this._view = webviewView;
         webviewView.webview.options = { enableScripts: true };
 
+        // The webview has no access to the file system or VS Code APIs — all data
+        // must flow through postMessage. When the user clicks the Refresh button,
+        // the webview posts a 'refresh' message back here so the extension host
+        // can re-read the active document and push updated HTML.
+        webviewView.webview.onDidReceiveMessage(message => {
+            if (message.type === 'refresh') {
+                const activeDoc = vscode.window.activeTextEditor?.document;
+                if (activeDoc && activeDoc.languageId === 'design-md') {
+                    this.refresh(activeDoc);
+                }
+            }
+        });
+
         const activeDoc = vscode.window.activeTextEditor?.document;
         if (activeDoc && activeDoc.languageId === 'design-md') {
             this.refresh(activeDoc);
@@ -101,6 +114,10 @@ class DesWatchPreviewProvider implements vscode.WebviewViewProvider {
 * { box-sizing: border-box; }
 body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); margin: 0; padding: 10px 12px 24px; }
 h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.55; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--vscode-widget-border, rgba(128,128,128,0.25)); }
+h3 { font-size: 10px; opacity: 0.75; margin: 12px 0 4px; }
+.toolbar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+.refresh-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; border-radius: 2px; cursor: pointer; font-size: 11px; font-family: var(--vscode-font-family); }
+.refresh-btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
 .swatch-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .swatch-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .swatch { width: 48px; height: 48px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.25); }
@@ -118,7 +135,20 @@ td:last-child { font-family: var(--vscode-editor-font-family, monospace); word-b
 </style>
 </head>
 <body>
+<div class="toolbar">
+  <button class="refresh-btn" id="refresh-btn">Refresh</button>
+</div>
 ${body}
+<script nonce="${nonce}">
+(function() {
+  const vscode = acquireVsCodeApi();
+  // Post a refresh message to the extension host — the webview cannot access
+  // the file system or VS Code APIs directly; all data must flow through postMessage.
+  document.getElementById('refresh-btn').addEventListener('click', function() {
+    vscode.postMessage({ type: 'refresh' });
+  });
+}());
+</script>
 </body>
 </html>`;
     }
@@ -214,7 +244,34 @@ ${body}
     }
 
     private _componentsSection(tokens: TokenMap): string | null {
-        return this._tableSection(tokens, 'components', 'Components');
+        const entries = Object.entries(tokens).filter(([k]) => k.startsWith('components.'));
+        if (entries.length === 0) {
+            return null;
+        }
+
+        // Group by component name (the first path segment after 'components.').
+        // e.g. 'components.button.background' → component='button', property='background'.
+        // Insertion order is preserved so components render in the same order they
+        // appear in the front matter.
+        const groups = new Map<string, Array<[string, string]>>();
+        for (const [key, value] of entries) {
+            const parts = key.split('.');
+            const componentName = parts[1] ?? 'unknown';
+            const propertyPath = parts.slice(2).join('.');
+            if (!groups.has(componentName)) {
+                groups.set(componentName, []);
+            }
+            groups.get(componentName)!.push([propertyPath, value]);
+        }
+
+        const sections: string[] = [];
+        for (const [componentName, props] of groups) {
+            const rows = props
+                .map(([prop, value]) => `<tr><td>${esc(prop)}</td><td>${esc(value)}</td></tr>`)
+                .join('');
+            sections.push(`<h3>${esc(componentName)}</h3><table>${rows}</table>`);
+        }
+        return `<h2>Components</h2>${sections.join('')}`;
     }
 
     private _tableSection(tokens: TokenMap, prefix: string, title: string): string | null {
