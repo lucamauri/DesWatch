@@ -30,6 +30,10 @@
       {
         "command": "deswatch.exportCssVariables",
         "title": "DesWatch: Export CSS Custom Properties"
+      },
+      {
+        "command": "deswatch.exportTailwindConfig",
+        "title": "DesWatch: Export Tailwind Config"
       }
     ],
     "languages": [
