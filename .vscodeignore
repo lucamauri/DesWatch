@@ -1,7 +1,9 @@
 # ── Tooling & editor ───────────────────────────────────────────────
 .vscode/**
 .vscode-test/**
+.vscode-test.mjs
 .claude/**
+.github/**
 node_modules/**
 scripts/**
 handoffs/**

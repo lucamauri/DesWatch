@@ -1,7 +1,7 @@
 {
   "name": "deswatch",
   "displayName": "DesWatch",
-  "description": "Rich editing support for DESIGN.md files (Google design.md format)",
+  "description": "Design token intelligence for VS Code — first-class editing support for DESIGN.md files",
   "version": "0.2.0",
   "publisher": "lucamauri",
   "icon": "images/icon.png",
@@ -9,17 +9,24 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Languages"
+    "Programming Languages",
+    "Linters",
+    "Visualization"
   ],
   "keywords": [
-    "design system",
     "design tokens",
+    "design system",
     "DESIGN.md",
-    "design.md"
+    "color",
+    "CSS"
   ],
+  "homepage": "https://github.com/lucamauri/DesWatch",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lucamauri/DesWatch"
+    "url": "https://github.com/lucamauri/DesWatch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lucamauri/DesWatch/issues"
   },
   "activationEvents": [
     "onLanguage:design-md"
