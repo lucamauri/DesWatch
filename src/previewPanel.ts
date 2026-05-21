@@ -105,12 +105,28 @@ class DesWatchPreviewProvider implements vscode.WebviewViewProvider {
     private _buildHtml(tokens: TokenMap): string {
         const nonce = crypto.randomBytes(16).toString('hex');
         const body = this._buildBody(tokens);
+
+        const fontFamilies = Object.entries(tokens)
+            .filter(([key]) => key.endsWith('.fontFamily'))
+            .map(([, value]) => value as string)
+            .filter((v, i, arr) => arr.indexOf(v) === i)
+            .filter(Boolean);
+
+        const googleFontsImport = fontFamilies.length > 0
+            ? `@import url('https://fonts.googleapis.com/css2?${
+                fontFamilies
+                    .map(f => `family=${encodeURIComponent(f)}:wght@400;500;700`)
+                    .join('&')
+              }&display=swap');`
+            : '';
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; script-src 'nonce-${nonce}'">
 <style>
+${googleFontsImport}
 * { box-sizing: border-box; }
 body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); margin: 0; padding: 10px 12px 24px; }
 h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.55; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--vscode-widget-border, rgba(128,128,128,0.25)); }
@@ -210,9 +226,9 @@ ${body}
         }
         const specimens = Object.entries(styles).map(([name, props]) => {
             const cssProps = [
-                props.family     ? `font-family:${props.family}`         : '',
-                props.size       ? `font-size:${props.size}`             : '',
-                props.weight     ? `font-weight:${props.weight}`         : '',
+                props.fontFamily ? `font-family:${props.fontFamily}`     : '',
+                props.fontSize   ? `font-size:${props.fontSize}`         : '',
+                props.fontWeight ? `font-weight:${props.fontWeight}`     : '',
                 props.lineHeight ? `line-height:${props.lineHeight}`     : '',
             ].filter(Boolean).join(';');
             const meta = Object.entries(props).map(([k, v]) => `${k}: ${v}`).join(' · ');

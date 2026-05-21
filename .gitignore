@@ -63,6 +63,10 @@ out/
 # VS Code workspace file if one is ever created.
 *.code-workspace
 
+# Downloaded by @vscode/test-cli when running `npm test`.
+# Large (~200 MB) and machine-specific — never commit.
+.vscode-test/*
+
 
 # ── Claude Code ───────────────────────────────
 # Claude Code stores its project memory and session
@@ -144,3 +148,6 @@ images/*.png
 
 # Temporary files written by Claude Code's Edit tool on Windows.
 *.ts.tmp.*
+
+# esbuild metafile (generated with --metafile flag, not used by default).
+meta.json

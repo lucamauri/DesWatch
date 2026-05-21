@@ -9,6 +9,7 @@ import { registerHoverProvider } from './hoverProvider.js';
 import { disposeLog } from './log.js';
 import { registerPreviewPanel } from './previewPanel.js';
 import { clearCache } from './tokenCache.js';
+import { registerTokenDecorations } from './tokenDecorations';
 
 export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -25,6 +26,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerCompletionProvider(context);
     registerDefinitionProvider(context);
     registerPreviewPanel(context);
+    registerTokenDecorations(context);
 }
 
 export function deactivate(): void {

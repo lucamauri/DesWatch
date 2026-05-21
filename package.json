@@ -28,9 +28,6 @@
   "bugs": {
     "url": "https://github.com/lucamauri/DesWatch/issues"
   },
-  "activationEvents": [
-    "onLanguage:design-md"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -47,12 +44,12 @@
       {
         "id": "design-md",
         "aliases": [
-          "Design Markdown",
+          "Design MD",
           "design-md"
         ],
-        "filenames": [
-          "DESIGN.md",
-          "design.md"
+        "filenamePatterns": [
+          "*design*.md",
+          "*DESIGN*.md"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -87,7 +84,8 @@
         {
           "id": "deswatch.preview",
           "name": "Design Preview",
-          "type": "webview"
+          "type": "webview",
+          "icon": "images/icon.png"
         }
       ]
     },
@@ -113,7 +111,8 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run bundle",
+    "bundle": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
@@ -126,11 +125,12 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.41",
     "@types/vscode": "^1.90.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.28.0",
     "mocha": "^10.8.2",
     "sharp": "^0.34.5",
     "typescript": "^5.4.0"
