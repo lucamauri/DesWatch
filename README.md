@@ -1,8 +1,16 @@
 # DesWatch
+
+<img src="/images/icon.svg" width="256" align="right" />
+
 > Design token intelligence for VS Code
 
 ![CI](https://github.com/lucamauri/DesWatch/actions/workflows/ci.yml/badge.svg)
-![Version](https://img.shields.io/visual-studio-marketplace/v/lucamauri.design-md)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.85.0+-007ACC?logo=visual-studio-code)
+![License](https://img.shields.io/badge/license-GPL--2.0--or--later-green)
+![Status](https://img.shields.io/badge/status-Active-brightgreen)
+[![Publish Status](https://github.com/lucamauri/DesWatch/actions/workflows/publish.yml/badge.svg)](https://github.com/lucamauri/DesWatch/actions/workflows/publish.yml)
+[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version/lucamauri.deswatch.svg)](https://marketplace.visualstudio.com/items?itemName=lucamauri.deswatch)
+[![Downloads](https://vsmarketplacebadges.dev/downloads-short/lucamauri.deswatch.svg)](https://marketplace.visualstudio.com/items?itemName=lucamauri.deswatch)
 
 First-class editing support for [DESIGN.md](https://github.com/google-labs-code/design.md) files — Google's open format for describing visual design systems to AI coding agents and human collaborators.
 
