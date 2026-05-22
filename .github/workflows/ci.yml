@@ -27,7 +27,7 @@ jobs:
       - run: npm run compile
 
       - name: Install Xvfb
-        run: sudo spt-get install -y xvfb
+        run: sudo apt-get install -y xvfb
 
       - name: Run tests
         run: xvfb-run -a npm test
