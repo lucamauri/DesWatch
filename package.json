@@ -2,7 +2,7 @@
   "name": "deswatch",
   "displayName": "DesWatch",
   "description": "Design token intelligence for VS Code — first-class editing support for DESIGN.md files",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "lucamauri",
   "icon": "images/icon.png",
   "engines": {

@@ -1,6 +1,6 @@
 # DesWatch
 
-<img src="/images/icon.svg" width="256" align="right" />
+<img src="/images/icon.png" width="256" align="right" />
 
 > Design token intelligence for VS Code
 
