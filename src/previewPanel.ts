@@ -129,7 +129,7 @@ class DesWatchPreviewProvider implements vscode.WebviewViewProvider {
 ${googleFontsImport}
 * { box-sizing: border-box; }
 body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); margin: 0; padding: 10px 12px 24px; }
-h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.55; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--vscode-widget-border, rgba(128,128,128,0.25)); }
+h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(128,128,128,0.5); }
 h3 { font-size: 10px; opacity: 0.75; margin: 12px 0 4px; }
 .toolbar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
 .refresh-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; border-radius: 2px; cursor: pointer; font-size: 11px; font-family: var(--vscode-font-family); }

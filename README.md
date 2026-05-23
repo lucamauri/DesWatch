@@ -5,7 +5,7 @@
 > Design token intelligence for VS Code
 
 ![CI](https://github.com/lucamauri/DesWatch/actions/workflows/ci.yml/badge.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-1.85.0+-007ACC?logo=visual-studio-code)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.90.0+-007ACC?logo=visual-studio-code)
 ![License](https://img.shields.io/badge/license-GPL--2.0--or--later-green)
 ![Status](https://img.shields.io/badge/status-Active-brightgreen)
 [![Publish Status](https://github.com/lucamauri/DesWatch/actions/workflows/publish.yml/badge.svg)](https://github.com/lucamauri/DesWatch/actions/workflows/publish.yml)
